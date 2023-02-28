@@ -4,81 +4,119 @@
 
 void main()
 {
-	char label[10], opcode[10], operand[10];
-	int start,length,locctr;
-	char code[10], mnemonic[10];
+      char  label[10], mnemonic[10], operand[10];
+      char  symbol[10], symboladdress[10], opcode[10], opaddress[10];
+      int   start, locctr, flag, totallength;
 
-	FILE *fp1,*fp2,*fp3,*fp4,*fp5;
+      FILE *source, *optab, *symtab, *intermediate, *length;
 
-	fp1 = fopen("input.txt","r");
-	fp2 = fopen("optab.txt","r");
+      source            =fopen("source.txt","r");
+      optab             =fopen("optab.txt","r");
+      symtab            =fopen("symtab.txt","w");
+      intermediate      =fopen("intermediate.txt","w");
+      length            =fopen("length.txt","w");
 
-	fp3 = fopen("intermediate.txt","w");
-	fp4 = fopen("symtab.txt","w");
-	fp5 = fopen("length.txt","w");
+      fscanf(source,"%s%s%s", label, mnemonic, operand);
 
-	fscanf(fp1,"%s\t%s\t%s",label,opcode,operand);
+      if(strcmp(mnemonic, "START") == 0)
+      {
+            start   = atoi(operand);
+            printf("\nThe starting Address is: %d\n",start);
+            locctr  = start;
+            fprintf(intermediate,"%d\t%s\t%s\t%s\n", locctr, label, mnemonic, operand);
+      }
 
-	if(strcmp(opcode,"START") == 0)
-	{
-		start = atoi(operand);
-		locctr = start;
+      else
+      {
+            start  = 0;
+            printf("\nThe starting Address is: %d\n",start);
+            locctr = start;
+      }
 
-		fprintf(fp3,"%s\t%s\t%s\n",label,opcode,operand);
-		fscanf(fp1,"%s\t%s\t%s",label,opcode,operand);
-	}
-	else
-	{
-		locctr = 0;
-	}
+      fscanf(source,"%s%s%s", label, mnemonic, operand);
+      while(strcmp(mnemonic, "END") != 0)
+      {
+            fprintf(intermediate,"%d\t%s\t%s\t%s\n", locctr, label, mnemonic, operand);
 
-	while(strcmp(opcode,"END") != 0)
-	{
-		fprintf(fp3,"%d\t%s\t%s\t%s\n",locctr,label,opcode,operand);
+            if(strcmp(label,"-") != 0)
+            {
+                  flag = 0;
+                  rewind(symtab);
+                  while(fscanf(symtab,"%s%s",symbol,symboladdress) != EOF)
+                  {
+                        if(strcmp(symbol, label) == 0)
+                        {
+                              flag = 1;
+                        }
+                  }
+                  rewind(symtab);
+                  
+                  if(flag == 0)
+                  {
+                        fprintf(symtab,"%s\t%d\n",label,locctr);
+                  }
+                  else
+                  {
+                        printf("\n\nERROR OCCURED\nDUPLICATE SYMBOL IN SYMTAB\n\n");
+                        exit(0);
+                  }
+            }
 
-		if(strcmp(label,"-") != 0)
-		{
-			fprintf(fp4,"%s\t%d\n",label,locctr);
-		}
+            flag = 0;
+            rewind(optab);
+            while(fscanf(optab,"%s%s",opcode,opaddress) != EOF)
+            {
+                  if(strcmp(opcode, mnemonic) == 0)
+                  {
+                        locctr += 3;
+                        flag = 1;
+                        break;
+                  }
 
-		fscanf(fp2,"%s\t%d",code,mnemonic);
+                  else if(strcmp(mnemonic, "WORD") == 0)
+                  {
+                        locctr += 3;
+                        flag = 1;
+                        break;
+                  }
 
-		while(strcmp(code,"END") != 0)
-		{
-			if(strcmp(opcode,code) == 0)
-			{
-				locctr = locctr + 3;
-				break;
-			}
-			fscanf(fp2,"%s\t%d",code,mnemonic);
-		}
+                  else if(strcmp(mnemonic, "RESW") == 0)
+                  {
+                        locctr = locctr + (3 * atoi(operand));
+                        flag = 1;
+                        break;
+                  }
 
-		if(strcmp(opcode,"WORD") == 0)
-		{
-			locctr = locctr + 3;
-		}
-		else if(strcmp(opcode,"RESW") == 0)
-		{
-			locctr = locctr + (3 * (atoi(operand)));
-		}
-		else if(strcmp(opcode,"BYTE") == 0)
-		{
-			locctr = locctr + 1;
-		}
-		else if(strcmp(opcode,"RESB") == 0)
-		{
-			locctr = locctr + atoi(operand);
-		}
-		fscanf(fp1,"%s\t%s\t%s",label,opcode,operand);
-	}
-	fprintf(fp3,"%d\t%s\t%s\t%s",locctr,label,opcode,operand);
+                  else if(strcmp(mnemonic, "RESB") == 0)
+                  {
+                        locctr += atoi(operand);
+                        flag = 1;
+                        break;
+                  }
 
-	length = locctr - start;
-	fprintf(fp5,"The length of the file is %d",length);
+                  else if(strcmp(mnemonic, "BYTE") == 0)
+                  {
+                        locctr += strlen(operand);
+                        flag = 1;
+                        break;
+                  }
+            }
+            if(flag == 0)
+            {
+                  printf("\n\nERROR OCCURED\nOPCODE NOT FOUND\n\n");
+                  exit(0);
+            }
 
-	fclose(fp1);
-	fclose(fp2);
-	fclose(fp3);
-	fclose(fp4);
-	fclose(fp5);
+            fscanf(source,"%s%s%s", label, mnemonic, operand);
+      }
+      fprintf(intermediate,"%d\t%s\t%s\t%s\n", locctr, label, mnemonic, operand);
+
+      totallength = locctr - start;
+      fprintf(length,"%d",totallength);
+
+      fclose(source);
+      fclose(intermediate);
+      fclose(optab);
+      fclose(symtab);
+      fclose(length);
 }
