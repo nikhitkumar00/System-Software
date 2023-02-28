@@ -1,53 +1,74 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 void main()
 {
-    char label[10], opcode[10], operand[10], op[10],sym[10];
-    int loc,obj;
+      char label[10], mnemonic[10], operand[10],location[10], totallength[10];
+      char opcode[10], opcodeaddress[10], symbol[10], symboladdress[10];
+      int start;
 
-	FILE *fp1,*fp2,*fp3,*fp4;
+      FILE *intermediate, *optab, *symtab, *object, *length;
 
-    fp1 = fopen("intermediate.txt","r");
-    fp2 = fopen("optab.txt","r");
-    fp3 = fopen("symtab.txt","r");
+      intermediate      =     fopen("intermediate.txt","r");
+      optab             =     fopen("optab.txt","r");
+      symtab            =     fopen("symtab.txt","r");
+      object            =     fopen("object.txt","w");
+      length            =     fopen("length.txt","r");
 
-    fscanf(fp1,"%s\t%s\t%s",label,opcode,operand);
-    
-    if(strcmp(opcode,"START") == 0)
-    {
-        fscanf(fp1,"%d\t%s\t%s\t%s\n",&loc,label,opcode,operand);
-        while(strcmp(opcode,"END") != 0)
-        {
-            while(!feof(fp2))
+      fscanf(intermediate,"%s%s%s%s",location, label, mnemonic, operand);
+
+      if(strcmp(mnemonic,"START") == 0)
+      {
+            start = atoi(location);
+            fscanf(length,"%s",totallength);
+      }
+      else
+      {
+            printf("\n\nNO START\n\n");
+            exit(0);
+      }
+
+      fprintf(object,"H^%s^%s^%s\nT^%s",label, location, totallength,location);
+
+      fscanf(intermediate,"%s%s%s%s",location, label, mnemonic, operand);
+
+      while (strcmp(mnemonic,"END") != 0)
+      {
+            rewind(optab);
+            while(fscanf(optab,"%s%s",opcode,opcodeaddress) != EOF)
             {
-                fscanf(fp2,"%s\t%d\n",op,&obj);
-                if(strcmp(op,opcode) == 0)
-                {
-                    printf("%d",obj);
-                    break;
-                }
-            }
-            while(!feof(fp3))
-            {
-                fscanf(fp3,"%s\t%d\n",sym,&obj);
-                if(strcmp(sym,label) == 0)
-                {
-                    printf("%d\n",obj);
-                    break;
-                }
-            }
-            fscanf(fp1,"%d\t%s\t%s\t%s\n",&loc,label,opcode,operand);
+                  if(strcmp(opcode,mnemonic) == 0)
+                  {
+                        fprintf(object,"^%s",opcodeaddress);
 
-        }
-        fclose(fp1);
-        fclose(fp2);
-        fclose(fp3);
-    }
-    else
-    {
-        printf("\nFaulted Intermediate File\n");
-        exit(0);
-    }
+                        rewind(symtab);
+                        while(fscanf(symtab,"%s%s",symbol,symboladdress) != EOF)
+                        {
+                              if(strcmp(symbol,operand) == 0)
+                              {
+                                    fprintf(object,"%s",symboladdress);
+                              }
+                        }
+                  }
+                  else if(strcmp("WORD",mnemonic) == 0 || strcmp("BYTE",mnemonic) == 0)
+                  {
+                        fprintf(object,"^0000%s",operand);
+                  }
+                  else if(strcmp("RESW",mnemonic) == 0 || strcmp("RESB",mnemonic) == 0)
+                  {
+                        break;
+                  }                  
+            }
+
+            fscanf(intermediate,"%s%s%s%s",location, label, mnemonic, operand);
+      }
+
+      fprintf(object,"\nE^%d",start);
+
+      fclose(intermediate);
+      fclose(optab);
+      fclose(symtab);
+      fclose(length);
+      fclose(object);
 }
